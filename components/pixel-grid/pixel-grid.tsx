@@ -70,12 +70,16 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
     [pixels],
   );
 
+  // Track image load count to trigger re-render
+  const [imagesLoaded, setImagesLoaded] = useState(0);
+
   // Preload images for sold pixel blocks
   useEffect(() => {
     for (const block of pixels) {
       if (block.image_url && !loadedImages.current.has(block.id)) {
         const img = new Image();
         img.crossOrigin = "anonymous";
+        img.onload = () => setImagesLoaded((c) => c + 1);
         img.src = block.image_url;
         loadedImages.current.set(block.id, img);
       }
@@ -169,7 +173,7 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
     ctx.strokeRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
 
     ctx.restore();
-  }, [transform, pixels, selection, canvasSize]);
+  }, [transform, pixels, selection, canvasSize, imagesLoaded]);
 
   // Handle mouse move for tooltip and selection
   const handleMouseMove = useCallback(
