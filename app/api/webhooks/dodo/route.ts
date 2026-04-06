@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Webhook } from "standardwebhooks";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const webhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   }
 
   const payload = JSON.parse(rawBody);
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   switch (payload.type) {
     case "payment.succeeded": {

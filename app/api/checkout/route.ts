@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getDodo } from "@/lib/dodo";
 import { GRID_WIDTH, GRID_HEIGHT, MIN_BLOCK_SIZE } from "@/lib/constants";
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Check for overlap with existing pixels (pending or active)
   const { data: conflicts } = await supabase.rpc("check_pixel_overlap", {
