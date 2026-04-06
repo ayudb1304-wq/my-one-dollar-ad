@@ -12,23 +12,19 @@ interface PixelGridProps {
   onSelectionComplete?: (selection: PixelSelection) => void;
 }
 
-const DEFAULT_CANVAS_SIZE = 800;
-
 export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const loadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
-  const [canvasSize, setCanvasSize] = useState(DEFAULT_CANVAS_SIZE);
+  const [canvasSize, setCanvasSize] = useState(600);
 
-  // Responsive canvas sizing — fit viewport height too
+  // Fill available viewport — grid should dominate the page
   useEffect(() => {
     const updateSize = () => {
-      if (containerRef.current) {
-        const parentWidth = containerRef.current.parentElement?.clientWidth ?? DEFAULT_CANVAS_SIZE;
-        const maxHeight = window.innerHeight - 280; // leave room for header, controls, selection bar
-        const size = Math.min(DEFAULT_CANVAS_SIZE, parentWidth - 2, maxHeight);
-        setCanvasSize(Math.max(300, size)); // minimum 300px
-      }
+      const vw = window.innerWidth - 20; // small padding
+      const vh = window.innerHeight - 160; // header + controls + stats bar
+      const size = Math.min(vw, vh);
+      setCanvasSize(Math.max(400, size));
     };
     updateSize();
     window.addEventListener("resize", updateSize);

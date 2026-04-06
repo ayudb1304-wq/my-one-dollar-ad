@@ -11,42 +11,19 @@ interface ImageUploadProps {
 
 export function ImageUpload({ width, height, onImageReady }: ImageUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const processFile = useCallback(
     (file: File) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          // Resize to match pixel block dimensions
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) return;
-
-          // Cover-fit: scale to fill, then center-crop
-          const scale = Math.max(width / img.width, height / img.height);
-          const sw = width / scale;
-          const sh = height / scale;
-          const sx = (img.width - sw) / 2;
-          const sy = (img.height - sh) / 2;
-
-          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, width, height);
-
-          const dataUrl = canvas.toDataURL("image/png");
-          setPreview(dataUrl);
-          onImageReady(dataUrl);
-        };
-        img.src = e.target?.result as string;
+        const dataUrl = e.target?.result as string;
+        setPreview(dataUrl);
+        onImageReady(dataUrl);
       };
       reader.readAsDataURL(file);
     },
-    [width, height, onImageReady],
+    [onImageReady],
   );
 
   const handleDrop = useCallback(
@@ -73,7 +50,6 @@ export function ImageUpload({ width, height, onImageReady }: ImageUploadProps) {
             src={preview}
             alt="Upload preview"
             className="max-h-40 rounded"
-            style={{ imageRendering: width < 100 ? "pixelated" : "auto" }}
           />
         ) : (
           <>
@@ -81,7 +57,7 @@ export function ImageUpload({ width, height, onImageReady }: ImageUploadProps) {
               Click or drag & drop an image
             </p>
             <p className="text-xs text-muted-foreground">
-              PNG, JPG, or GIF — will be resized to {width}x{height}px
+              PNG, JPG, or GIF — full quality, visible when zoomed in
             </p>
           </>
         )}
@@ -110,8 +86,6 @@ export function ImageUpload({ width, height, onImageReady }: ImageUploadProps) {
           Remove image
         </Button>
       )}
-
-      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }

@@ -48,14 +48,16 @@ export async function POST(request: Request) {
   // Upload image to Supabase Storage if provided
   let imageUrl: string | null = null;
   if (image_data_url) {
-    const base64Data = image_data_url.split(",")[1];
+    const [header, base64Data] = image_data_url.split(",");
+    const contentType = header.match(/data:(.*?);/)?.[1] || "image/png";
+    const ext = contentType.split("/")[1] || "png";
     const buffer = Buffer.from(base64Data, "base64");
-    const fileName = `pixels/${Date.now()}-${x}-${y}.png`;
+    const fileName = `pixels/${Date.now()}-${x}-${y}.${ext}`;
 
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("pixel-images")
       .upload(fileName, buffer, {
-        contentType: "image/png",
+        contentType,
         upsert: false,
       });
 
