@@ -8,6 +8,7 @@ export interface PixelBlock {
   color: string | null;
   display_name: string | null;
   destination_url: string | null;
+  status?: string;
 }
 
 export interface PixelSelection {

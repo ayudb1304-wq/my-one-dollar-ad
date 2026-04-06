@@ -1,14 +1,14 @@
 import { StatsBar } from "@/components/layout/stats-bar";
 import { TOTAL_PIXELS, PRICE_PER_PIXEL, MIN_PIXELS } from "@/lib/constants";
 import { GridSection } from "@/components/pixel-grid/grid-section";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: pixels } = await supabase
     .from("pixels")
-    .select("id, x, y, width, height, image_url, color, display_name, destination_url")
-    .eq("status", "active");
+    .select("id, x, y, width, height, image_url, color, display_name, destination_url, status")
+    .in("status", ["active", "pending"]);
 
   const soldPixels = (pixels ?? []).reduce(
     (sum, p) => sum + p.width * p.height,

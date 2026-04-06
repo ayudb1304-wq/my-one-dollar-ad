@@ -123,17 +123,28 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
       }
     }
 
-    // Draw sold pixel blocks
+    // Draw pixel blocks (active and pending)
     for (const block of pixels) {
-      const img = loadedImages.current.get(block.id);
-      if (img && img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, block.x, block.y, block.width, block.height);
-      } else if (block.color) {
-        ctx.fillStyle = block.color;
+      if (block.status === "pending") {
+        // Pending: gray with diagonal stripes
+        ctx.fillStyle = "#d4d4d4";
         ctx.fillRect(block.x, block.y, block.width, block.height);
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = 1 / transform.scale;
+        ctx.setLineDash([3 / transform.scale, 3 / transform.scale]);
+        ctx.strokeRect(block.x, block.y, block.width, block.height);
+        ctx.setLineDash([]);
+      } else {
+        const img = loadedImages.current.get(block.id);
+        if (img && img.complete && img.naturalWidth > 0) {
+          ctx.drawImage(img, block.x, block.y, block.width, block.height);
+        } else if (block.color) {
+          ctx.fillStyle = block.color;
+          ctx.fillRect(block.x, block.y, block.width, block.height);
+        }
       }
 
-      // Draw border around sold blocks
+      // Draw border around blocks
       ctx.strokeStyle = "rgba(0,0,0,0.15)";
       ctx.lineWidth = 0.5 / transform.scale;
       ctx.strokeRect(block.x, block.y, block.width, block.height);
