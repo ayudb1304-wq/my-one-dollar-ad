@@ -12,12 +12,26 @@ interface PixelGridProps {
   onSelectionComplete?: (selection: PixelSelection) => void;
 }
 
-const CANVAS_SIZE = 800;
+const DEFAULT_CANVAS_SIZE = 800;
 
 export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const loadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
+  const [canvasSize, setCanvasSize] = useState(DEFAULT_CANVAS_SIZE);
+
+  // Responsive canvas sizing
+  useEffect(() => {
+    const updateSize = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.parentElement?.clientWidth ?? DEFAULT_CANVAS_SIZE;
+        setCanvasSize(Math.min(DEFAULT_CANVAS_SIZE, width - 2)); // -2 for border
+      }
+    };
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
 
   const [buyMode, setBuyMode] = useState(false);
   const [selection, setSelection] = useState<PixelSelection | null>(null);
@@ -34,7 +48,7 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
     resetView,
     zoomIn,
     zoomOut,
-  } = useGridTransform(CANVAS_SIZE);
+  } = useGridTransform(canvasSize);
 
   // Build spatial index for fast hit detection
   const findBlockAt = useCallback(
@@ -75,12 +89,12 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = CANVAS_SIZE * dpr;
-    canvas.height = CANVAS_SIZE * dpr;
+    canvas.width = canvasSize * dpr;
+    canvas.height = canvasSize * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Clear
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
 
     ctx.save();
     ctx.translate(transform.x, transform.y);
@@ -142,7 +156,7 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
     ctx.strokeRect(0, 0, GRID_WIDTH, GRID_HEIGHT);
 
     ctx.restore();
-  }, [transform, pixels, selection]);
+  }, [transform, pixels, selection, canvasSize]);
 
   // Handle mouse move for tooltip and selection
   const handleMouseMove = useCallback(
@@ -278,7 +292,7 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
           onZoomIn={zoomIn}
           onZoomOut={zoomOut}
           onReset={resetView}
-          scale={transform.scale / (CANVAS_SIZE / 1000)}
+          scale={transform.scale / (canvasSize / 1000)}
           buyMode={buyMode}
           onToggleBuyMode={() => {
             setBuyMode(!buyMode);
@@ -300,13 +314,13 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
       <div
         ref={containerRef}
         className="relative overflow-hidden rounded-lg border border-border"
-        style={{ width: CANVAS_SIZE, height: CANVAS_SIZE }}
+        style={{ width: canvasSize, height: canvasSize }}
       >
         <canvas
           ref={canvasRef}
           style={{
-            width: CANVAS_SIZE,
-            height: CANVAS_SIZE,
+            width: canvasSize,
+            height: canvasSize,
             cursor: buyMode ? "crosshair" : hoveredBlock ? "pointer" : "grab",
           }}
           onWheel={panHandlers.onWheel}

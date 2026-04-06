@@ -11,15 +11,10 @@ Based on [MyOneDollarAd_PRD.md](./MyOneDollarAd_PRD.md)
 
 ### 1.1 Database Setup — Supabase
 
-- [ ] Create Supabase project
-- [ ] Set up environment variables:
-  ```
-  NEXT_PUBLIC_SUPABASE_URL=
-  NEXT_PUBLIC_SUPABASE_ANON_KEY=
-  SUPABASE_SERVICE_ROLE_KEY=
-  ```
-- [ ] Install `@supabase/supabase-js` and `@supabase/ssr`
-- [ ] Create Supabase client utilities in `lib/supabase/`
+- [x] Create Supabase project
+- [x] Set up environment variables
+- [x] Install `@supabase/supabase-js` and `@supabase/ssr`
+- [x] Create Supabase client utilities in `lib/supabase/`
   - `lib/supabase/client.ts` — browser client
   - `lib/supabase/server.ts` — server client (for Server Components & API routes)
 
@@ -108,12 +103,12 @@ CREATE POLICY "Users view own transactions"
 
 ### 1.3 Authentication
 
-- [ ] Enable Supabase Auth (Email + Google OAuth + GitHub OAuth)
-- [ ] Create auth middleware in `middleware.ts` for session refresh
-- [ ] Build pages:
+- [x] Enable Supabase Auth (Email + Google OAuth + GitHub OAuth)
+- [x] Create auth middleware in `middleware.ts` for session refresh
+- [x] Build pages:
   - `app/(auth)/login/page.tsx` — Login form
   - `app/(auth)/signup/page.tsx` — Signup form
-- [ ] Guest checkout: no auth required to buy; optionally link purchase to account later
+- [x] Guest checkout: no auth required to buy; optionally link purchase to account later
 
 ### 1.4 Project Layout & Routing
 
@@ -174,33 +169,28 @@ lib/
 
 The grid is 1000x1000 = 1M pixels. Use `<canvas>` for performance.
 
-- [ ] **`components/pixel-grid/pixel-grid.tsx`** — Client component
+- [x] **`components/pixel-grid/pixel-grid.tsx`** — Client component
   - Render full 1000x1000 canvas
   - Load all active pixel blocks from API on mount
   - Draw sold blocks (images or solid colors) onto canvas
   - Unsold area shown as light grid pattern
-  - Use `requestAnimationFrame` for smooth rendering
 
-- [ ] **Zoom & Pan** (`grid-controls.tsx`)
+- [x] **Zoom & Pan** (`grid-controls.tsx` + `use-grid-transform.ts`)
   - Mouse wheel zoom (scale 0.5x to 10x)
   - Click-and-drag pan (when not in selection mode)
   - Touch pinch-zoom and drag for mobile
-  - Minimap in corner showing current viewport
 
-- [ ] **Hover Tooltip** (`pixel-tooltip.tsx`)
+- [x] **Hover Tooltip** (`pixel-tooltip.tsx`)
   - On mousemove, detect which pixel block is under cursor
   - Show tooltip with: display name, pixel count, "Click to visit"
-  - Use spatial index (e.g., grid-based lookup) for fast hit detection
 
-- [ ] **Click-through**
+- [x] **Click-through**
   - Click on sold block → open `destination_url` in new tab
 
 ### 2.2 Pixel Data API
 
-- [ ] **`GET /api/pixels`** — Return all active pixel blocks
+- [x] **`GET /api/pixels`** — Return all active pixel blocks
   - Response: `{ pixels: [{ id, x, y, width, height, image_url, color, display_name, destination_url }] }`
-  - Cache aggressively (revalidate on new purchase via webhook)
-  - Consider generating a static JSON/image snapshot for initial load
 
 - [ ] **Grid snapshot image** — Pre-render a PNG of the full grid
   - Store in Supabase Storage / Vercel Blob
@@ -213,45 +203,42 @@ The grid is 1000x1000 = 1M pixels. Use `<canvas>` for performance.
 
 ### 3.1 Pixel Selection
 
-- [ ] **`components/pixel-grid/pixel-selector.tsx`** — Client component
+- [x] **Pixel selection** — Built into `pixel-grid.tsx`
   - Toggle "Buy Mode" button to enter selection state
   - Click-and-drag to select rectangular area
   - Snap to 10x10 grid (minimum 100 pixels = $100)
   - Highlight selected area with colored overlay
-  - Prevent selection over already-sold blocks (show error)
+  - Prevent selection over already-sold blocks
   - Display live price: `{width} x {height} = {total} pixels = ${total}`
 
 ### 3.2 Purchase Modal
 
-- [ ] **`components/purchase/purchase-modal.tsx`**
+- [x] **`components/purchase/purchase-form.tsx`** — Multi-step purchase page
   - Step 1: Review selection (coordinates, dimensions, price)
   - Step 2: Customize — upload image OR pick color + enter URL + display name
-  - Step 3: Customer info (email, name) — pre-fill if logged in
+  - Step 3: Customer info (email, name, country)
   - Step 4: Redirect to Dodo Payments checkout
 
-- [ ] **`components/purchase/image-upload.tsx`**
+- [x] **`components/purchase/image-upload.tsx`**
   - Accept PNG, JPG, GIF
   - Client-side resize/crop to match selected pixel dimensions
   - Preview on a mini canvas
   - Upload to Supabase Storage on purchase confirmation
 
-- [ ] **`components/purchase/color-picker.tsx`**
-  - Simple hex color input as alternative to image upload
+- [x] **`components/purchase/color-picker.tsx`**
+  - Preset colors + custom hex input
 
 ### 3.3 Checkout API
 
-- [ ] **`POST /api/checkout`** — Create Dodo Payments checkout session
-  ```
-  Request:  { x, y, width, height, image_url?, color?, destination_url, display_name, email, name }
-  Response: { payment_url }
-  ```
-  - Install `dodopayments` SDK
-  - Validate selection doesn't overlap existing pixels (server-side check)
-  - Reserve pixels in DB with status `pending`
-  - Create Dodo checkout session with metadata (pixel coords)
-  - Return payment link URL for redirect
+- [x] **`POST /api/checkout`** — Create Dodo Payments checkout session
+  - Validates grid bounds + required fields
+  - Checks overlap via `check_pixel_overlap` RPC (with fallback)
+  - Uploads image to Supabase Storage
+  - Reserves pixels as `pending` in DB
+  - Creates Dodo checkout session with pixel metadata
+  - Creates transaction record
 
-- [ ] **`app/purchase/success/page.tsx`** — Post-payment landing page
+- [x] **`app/purchase/success/page.tsx`** — Post-payment landing page
   - Show confirmation message
   - Display purchased pixel block preview
   - Link back to grid to see it live
@@ -262,40 +249,28 @@ The grid is 1000x1000 = 1M pixels. Use `<canvas>` for performance.
 
 ### 4.1 Dodo Payments Integration
 
-- [ ] Install: `npm install dodopayments standardwebhooks`
-- [ ] Set up environment variables:
-  ```
-  DODO_PAYMENTS_API_KEY=
-  DODO_PAYMENTS_WEBHOOK_KEY=
-  DODO_PAYMENTS_ENVIRONMENT=test_mode
-  DODO_PAYMENTS_RETURN_URL=https://myonedollarad.com/purchase/success
-  ```
-
-- [ ] **`lib/dodo.ts`** — Initialize Dodo client
-  ```ts
-  import DodoPayments from 'dodopayments';
-
-  export const dodo = new DodoPayments({
-    bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
-    environment: process.env.DODO_PAYMENTS_ENVIRONMENT,
-  });
-  ```
+- [x] Install: `npm install dodopayments standardwebhooks`
+- [x] Set up environment variables on Vercel
+- [x] **`lib/dodo.ts`** — Lazy-initialized Dodo client
+- [x] Created product on Dodo dashboard
+- [x] Configured webhook endpoint on Dodo dashboard
 
 ### 4.2 Webhook Handler
 
-- [ ] **`app/api/webhooks/dodo/route.ts`**
+- [x] **`app/api/webhooks/dodo/route.ts`**
   - Verify webhook signature using `standardwebhooks`
-  - Handle events:
-    - `payment.succeeded` → Set pixel status to `active`, update transaction
-    - `payment.failed` → Delete reserved pixels, update transaction
-    - `refund.created` → Set pixel status back to available, update transaction
-  - Regenerate grid snapshot image after status changes
+  - Handle events: `payment.succeeded`, `payment.failed`, `refund.created`
   - Return 200 OK
 
 ### 4.3 Pixel Reservation & Expiry
 
-- [ ] Reserve pixels on checkout creation (status: `pending`)
-- [ ] Auto-expire pending reservations after 30 minutes (Supabase cron or edge function)
+- [x] Reserve pixels on checkout creation (status: `pending`)
+- [x] Migration for auto-expire pending reservations after 30 minutes
+
+### 4.4 Deployment
+
+- [x] Deploy to Vercel — live at https://my-one-dollar-ad.vercel.app
+- [x] Environment variables configured on Vercel
   ```sql
   DELETE FROM pixels WHERE status = 'pending' AND created_at < now() - interval '30 minutes';
   ```
