@@ -137,8 +137,10 @@ export async function POST(request: Request) {
 
   // Create Dodo Payments checkout session
   try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://my-one-dollar-ad.vercel.app";
     const payment = await getDodo().payments.create({
       payment_link: true,
+      return_url: `${appUrl}/purchase/success`,
       billing: {
         country: country || "US",
       },
