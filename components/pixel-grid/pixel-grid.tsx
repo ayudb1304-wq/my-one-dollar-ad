@@ -18,13 +18,11 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
   const loadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
   const [canvasSize, setCanvasSize] = useState(600);
 
-  // Fill available viewport — grid should dominate the page
+  // Fill available viewport width — grid should dominate the page
   useEffect(() => {
     const updateSize = () => {
-      const vw = window.innerWidth - 20; // small padding
-      const vh = window.innerHeight - 160; // header + controls + stats bar
-      const size = Math.min(vw, vh);
-      setCanvasSize(Math.max(400, size));
+      const vw = window.innerWidth - 20;
+      setCanvasSize(Math.max(400, vw));
     };
     updateSize();
     window.addEventListener("resize", updateSize);
