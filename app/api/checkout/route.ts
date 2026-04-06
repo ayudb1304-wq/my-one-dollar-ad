@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { dodo } from "@/lib/dodo";
+import { getDodo } from "@/lib/dodo";
 import { GRID_WIDTH, GRID_HEIGHT, MIN_BLOCK_SIZE } from "@/lib/constants";
 
 export async function POST(request: Request) {
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
 
   // Create Dodo Payments checkout session
   try {
-    const payment = await dodo.payments.create({
+    const payment = await getDodo().payments.create({
       payment_link: true,
       billing: {
         country: country || "US",
