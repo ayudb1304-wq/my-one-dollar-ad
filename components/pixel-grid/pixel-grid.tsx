@@ -18,11 +18,15 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
   const loadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
   const [canvasSize, setCanvasSize] = useState(600);
 
-  // Fill available viewport width — grid should dominate the page
+  // Fit the parent container width
   useEffect(() => {
     const updateSize = () => {
-      const vw = window.innerWidth - 20;
-      setCanvasSize(Math.max(400, vw));
+      if (containerRef.current) {
+        const parentWidth =
+          containerRef.current.parentElement?.clientWidth ??
+          window.innerWidth - 40;
+        setCanvasSize(Math.max(300, parentWidth - 2));
+      }
     };
     updateSize();
     window.addEventListener("resize", updateSize);
