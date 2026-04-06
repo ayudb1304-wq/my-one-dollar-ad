@@ -20,12 +20,14 @@ export function PixelGrid({ pixels, onSelectionComplete }: PixelGridProps) {
   const loadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
   const [canvasSize, setCanvasSize] = useState(DEFAULT_CANVAS_SIZE);
 
-  // Responsive canvas sizing
+  // Responsive canvas sizing — fit viewport height too
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
-        const width = containerRef.current.parentElement?.clientWidth ?? DEFAULT_CANVAS_SIZE;
-        setCanvasSize(Math.min(DEFAULT_CANVAS_SIZE, width - 2)); // -2 for border
+        const parentWidth = containerRef.current.parentElement?.clientWidth ?? DEFAULT_CANVAS_SIZE;
+        const maxHeight = window.innerHeight - 280; // leave room for header, controls, selection bar
+        const size = Math.min(DEFAULT_CANVAS_SIZE, parentWidth - 2, maxHeight);
+        setCanvasSize(Math.max(300, size)); // minimum 300px
       }
     };
     updateSize();

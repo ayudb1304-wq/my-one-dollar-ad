@@ -22,30 +22,30 @@ export function SelectionInfo({ selection, onClear }: SelectionInfoProps) {
   });
 
   return (
-    <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4">
-      <div className="text-sm">
-        <p>
-          <span className="text-muted-foreground">Position:</span>{" "}
-          ({selection.x}, {selection.y})
-        </p>
-        <p>
-          <span className="text-muted-foreground">Size:</span>{" "}
-          {selection.width}x{selection.height} ({totalPixels.toLocaleString()}{" "}
-          pixels)
-        </p>
-        <p className="font-medium">
-          Total: ${totalCost.toLocaleString()}
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={onClear}>
-          Clear
-        </Button>
-        <Button size="sm" asChild>
-          <Link href={`/purchase?${params.toString()}`}>
-            Continue to Purchase
-          </Link>
-        </Button>
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-muted-foreground">
+            ({selection.x}, {selection.y})
+          </span>
+          <span>
+            {selection.width}x{selection.height} &middot;{" "}
+            {totalPixels.toLocaleString()} px
+          </span>
+          <span className="font-bold text-lg">
+            ${totalCost.toLocaleString()}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onClear}>
+            Clear
+          </Button>
+          <Button size="sm" asChild>
+            <Link href={`/purchase?${params.toString()}`}>
+              Continue to Purchase
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
