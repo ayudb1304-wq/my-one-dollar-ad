@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,22 +21,70 @@ interface PurchaseFormProps {
   y: number;
   width: number;
   height: number;
+  imageDataUrl: string | null;
+  onImageReady: (dataUrl: string) => void;
+  color: string;
+  onColorChange: (color: string) => void;
+  adType: "image" | "color";
+  onAdTypeChange: (type: "image" | "color") => void;
+  displayName: string;
+  onDisplayNameChange: (name: string) => void;
 }
 
-export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
+export function PurchaseForm({
+  x,
+  y,
+  width,
+  height,
+  imageDataUrl,
+  onImageReady,
+  color,
+  onColorChange,
+  adType,
+  onAdTypeChange,
+  displayName,
+  onDisplayNameChange,
+}: PurchaseFormProps) {
   const totalPixels = width * height;
   const totalCost = totalPixels * PRICE_PER_PIXEL;
 
-  const [displayName, setDisplayName] = useState("");
   const [destinationUrl, setDestinationUrl] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [color, setColor] = useState("#3b82f6");
-  const [adType, setAdType] = useState<"image" | "color">("image");
   const [country, setCountry] = useState("US");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reservationId, setReservationId] = useState<string | null>(null);
+
+  // Reserve pixels immediately when page loads
+  useEffect(() => {
+    const reserve = async () => {
+      try {
+        const res = await fetch("/api/pixels/reserve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ x, y, width, height }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setReservationId(data.reservation_id);
+        }
+      } catch {
+        // Reservation failed — will be caught at checkout time
+      }
+    };
+    reserve();
+
+    // Release reservation on unmount (navigating away)
+    return () => {
+      if (reservationId) {
+        navigator.sendBeacon(
+          "/api/pixels/release",
+          JSON.stringify({ reservation_id: reservationId }),
+        );
+      }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +107,7 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
           image_data_url: adType === "image" ? imageDataUrl : null,
           color: adType === "color" ? color : null,
           country,
+          reservation_id: reservationId,
         }),
       });
 
@@ -70,7 +119,6 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
         return;
       }
 
-      // Redirect to Dodo Payments checkout
       if (data.payment_url) {
         window.location.href = data.payment_url;
       }
@@ -82,36 +130,10 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-      {/* Step 1: Review */}
+      {/* Customize */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">1. Review Selection</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Position:</span>{" "}
-              ({x}, {y})
-            </div>
-            <div>
-              <span className="text-muted-foreground">Size:</span>{" "}
-              {width}x{height}
-            </div>
-            <div>
-              <span className="text-muted-foreground">Pixels:</span>{" "}
-              {totalPixels.toLocaleString()}
-            </div>
-            <div>
-              <span className="font-medium">Total: ${totalCost.toLocaleString()}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Step 2: Customize */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">2. Customize Your Ad</CardTitle>
+          <CardTitle className="text-lg">1. Customize Your Ad</CardTitle>
           <CardDescription>
             Upload an image or choose a solid color for your pixel block
           </CardDescription>
@@ -119,7 +141,7 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
         <CardContent className="flex flex-col gap-4">
           <Tabs
             value={adType}
-            onValueChange={(v) => setAdType(v as "image" | "color")}
+            onValueChange={(v) => onAdTypeChange(v as "image" | "color")}
           >
             <TabsList>
               <TabsTrigger value="image">Image</TabsTrigger>
@@ -129,11 +151,11 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
               <ImageUpload
                 width={width}
                 height={height}
-                onImageReady={setImageDataUrl}
+                onImageReady={onImageReady}
               />
             </TabsContent>
             <TabsContent value="color" className="mt-4">
-              <ColorPicker color={color} onChange={setColor} />
+              <ColorPicker color={color} onChange={onColorChange} />
             </TabsContent>
           </Tabs>
 
@@ -143,7 +165,7 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
               id="display-name"
               placeholder="Your brand or company name"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              onChange={(e) => onDisplayNameChange(e.target.value)}
               required
             />
           </div>
@@ -162,35 +184,37 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
         </CardContent>
       </Card>
 
-      {/* Step 3: Customer Info */}
+      {/* Customer Info */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">3. Your Details</CardTitle>
+          <CardTitle className="text-lg">2. Your Details</CardTitle>
           <CardDescription>
             We&apos;ll send your receipt to this email
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="customer-name">Name</Label>
-            <Input
-              id="customer-name"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="customer-email">Email</Label>
-            <Input
-              id="customer-email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="customer-name">Name</Label>
+              <Input
+                id="customer-name"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="customer-email">Email</Label>
+              <Input
+                id="customer-email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="customer-country">Country Code</Label>
@@ -210,15 +234,17 @@ export function PurchaseForm({ x, y, width, height }: PurchaseFormProps) {
         </CardContent>
       </Card>
 
-      {/* Submit */}
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
-      <Button type="submit" size="lg" disabled={loading} className="w-full">
-        {loading
-          ? "Creating checkout..."
-          : `Pay $${totalCost.toLocaleString()} — Complete Purchase`}
-      </Button>
+      {/* Error */}
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {/* Sticky pay button */}
+      <div className="sticky bottom-0 -mx-4 border-t border-border bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <Button type="submit" size="lg" disabled={loading} className="w-full">
+          {loading
+            ? "Creating checkout..."
+            : `Pay $${totalCost.toLocaleString()} — Complete Purchase`}
+        </Button>
+      </div>
     </form>
   );
 }

@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     image_data_url,
     color,
     country,
+    reservation_id,
   } = body;
 
   // Validate grid bounds
@@ -43,42 +44,6 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
-
-  // Check for overlap with existing pixels (pending or active)
-  const { data: conflicts } = await supabase.rpc("check_pixel_overlap", {
-    sel_x: x,
-    sel_y: y,
-    sel_width: width,
-    sel_height: height,
-  });
-
-  // If RPC doesn't exist yet, fall back to manual check
-  if (conflicts === null) {
-    const { data: existingPixels } = await supabase
-      .from("pixels")
-      .select("x, y, width, height")
-      .in("status", ["pending", "active"]);
-
-    const overlap = existingPixels?.some(
-      (p) =>
-        x < p.x + p.width &&
-        x + width > p.x &&
-        y < p.y + p.height &&
-        y + height > p.y,
-    );
-
-    if (overlap) {
-      return NextResponse.json(
-        { error: "Selected area overlaps with existing pixels" },
-        { status: 409 },
-      );
-    }
-  } else if (conflicts && conflicts.length > 0) {
-    return NextResponse.json(
-      { error: "Selected area overlaps with existing pixels" },
-      { status: 409 },
-    );
-  }
 
   // Upload image to Supabase Storage if provided
   let imageUrl: string | null = null;
@@ -111,33 +76,82 @@ export async function POST(request: Request) {
   const totalPixels = width * height;
   const amountInCents = totalPixels * 100; // $1 per pixel = 100 cents
 
-  // Reserve pixels in DB
-  const { data: pixel, error: pixelError } = await supabase
-    .from("pixels")
-    .insert({
-      x,
-      y,
-      width,
-      height,
-      display_name,
-      destination_url,
-      image_url: imageUrl,
-      color: color || null,
-      status: "pending",
-    })
-    .select("id")
-    .single();
+  let pixelId: string;
 
-  if (pixelError) {
-    return NextResponse.json(
-      { error: "Failed to reserve pixels" },
-      { status: 500 },
+  if (reservation_id) {
+    // Update existing reservation with ad details
+    const { error: updateError } = await supabase
+      .from("pixels")
+      .update({
+        display_name,
+        destination_url,
+        image_url: imageUrl,
+        color: color || null,
+      })
+      .eq("id", reservation_id)
+      .eq("status", "pending");
+
+    if (updateError) {
+      return NextResponse.json(
+        { error: "Reservation expired or invalid" },
+        { status: 409 },
+      );
+    }
+
+    pixelId = reservation_id;
+  } else {
+    // No reservation — check overlap and create one
+    const { data: existingPixels } = await supabase
+      .from("pixels")
+      .select("x, y, width, height")
+      .in("status", ["pending", "active"]);
+
+    const overlap = existingPixels?.some(
+      (p) =>
+        x < p.x + p.width &&
+        x + width > p.x &&
+        y < p.y + p.height &&
+        y + height > p.y,
     );
+
+    if (overlap) {
+      return NextResponse.json(
+        { error: "Selected area overlaps with existing pixels" },
+        { status: 409 },
+      );
+    }
+
+    const { data: pixel, error: pixelError } = await supabase
+      .from("pixels")
+      .insert({
+        x,
+        y,
+        width,
+        height,
+        display_name,
+        destination_url,
+        image_url: imageUrl,
+        color: color || null,
+        status: "pending",
+      })
+      .select("id")
+      .single();
+
+    if (pixelError) {
+      return NextResponse.json(
+        { error: "Failed to reserve pixels" },
+        { status: 500 },
+      );
+    }
+
+    pixelId = pixel.id;
   }
 
   // Create Dodo Payments checkout session
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://my-one-dollar-ad.vercel.app";
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "https://my-one-dollar-ad.vercel.app";
     const payment = await getDodo().payments.create({
       payment_link: true,
       return_url: `${appUrl}/purchase/success`,
@@ -155,7 +169,7 @@ export async function POST(request: Request) {
         },
       ],
       metadata: {
-        pixel_id: pixel.id,
+        pixel_id: pixelId,
         pixel_x: String(x),
         pixel_y: String(y),
         pixel_width: String(width),
@@ -167,20 +181,22 @@ export async function POST(request: Request) {
     await supabase
       .from("pixels")
       .update({ payment_id: payment.payment_id })
-      .eq("id", pixel.id);
+      .eq("id", pixelId);
 
     // Create transaction record
     await supabase.from("transactions").insert({
-      pixel_id: pixel.id,
+      pixel_id: pixelId,
       amount: amountInCents,
       dodo_payment_id: payment.payment_id,
       status: "pending",
     });
 
     return NextResponse.json({ payment_url: payment.payment_link });
-  } catch (err) {
+  } catch {
     // Clean up reserved pixel on payment creation failure
-    await supabase.from("pixels").delete().eq("id", pixel.id);
+    if (!reservation_id) {
+      await supabase.from("pixels").delete().eq("id", pixelId);
+    }
 
     return NextResponse.json(
       { error: "Failed to create payment session" },
